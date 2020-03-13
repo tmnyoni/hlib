@@ -1,0 +1,9 @@
+#pragma once
+
+#ifdef HLIB_EXPORTS
+#define HLIB_API __declspec(dllexport)
+#else
+#define HLIB_API __declspec(dllimport)
+#endif
+
+void HLIB_API func();

@@ -1,0 +1,233 @@
+#include "hlib.h"
+#include <iostream>
+
+using table = std::vector<std::map<std::string, std::string>>;
+
+class hlib::hbase::hbase_impl {
+	friend hbase;
+
+	bool connected_;
+	sqlite3* db_;
+
+public:
+	hbase_impl() :
+		connected_(false),
+		db_(nullptr) {}
+
+	~hbase_impl() {
+		if (db_) {
+			// close database
+			sqlite3_close(db_);
+			db_ = nullptr;
+		}
+	}
+
+	std::string sqlite_error(int error_code) {
+		std::string error = sqlite3_errstr(error_code);
+		if (error == "not an error") error.clear();
+		if (error.length() > 0) error[0] = toupper(error[0]);
+		return error;
+	}
+
+	std::string sqlite_error() {
+		if (db_) {
+			std::string error = sqlite3_errmsg(db_);
+			if (error == "not an error") error.clear();
+			if (error.length() > 0) error[0] = toupper(error[0]);
+			return error;
+		}
+		else {
+			return "Database not open"; return false;
+		}
+	}
+
+	bool sqlite_query(const std::string& query,
+		table& table,
+		std::string& error)
+	{
+		table.clear();
+
+		if (db_) {
+			sqlite3_stmt* statement = nullptr;
+
+			if (sqlite3_prepare_v2(db_, query.c_str(), -1, &statement, 0) == SQLITE_OK) {
+				const int columns = sqlite3_column_count(statement);
+
+				while (true) {
+					if (sqlite3_step(statement) == SQLITE_ROW) {
+						std::map<std::string, std::string> values;
+
+						for (int column = 0; column < columns; column++) {
+							std::string column_name, value;
+
+							// get column name
+							char* ccColumn = (char*)sqlite3_column_name(statement, column);
+
+							if (ccColumn) {
+								column_name = ccColumn;
+
+								// get data
+								char* ccData = (char*)sqlite3_column_text(statement, column);
+
+								if (ccData)
+									value = ccData;
+
+								values.insert(std::make_pair(column_name, value));
+							}
+						}
+
+						table.push_back(values);
+					}
+					else
+						break;
+				}
+
+				sqlite3_finalize(statement);
+			}
+			else {
+				error = sqlite_error();
+				return false;
+			}
+
+			return true;
+		}
+		else {
+			error = "Database not open";
+			return false;
+		}
+	}
+
+	std::string type_to_string(hbase::column_type_ type) {
+
+		std::string _type;
+		switch (type)
+		{
+		case column_type_::blob_:
+			_type = "BLOB";
+			break;
+		case column_type_::float_:
+			_type = "FLOAT";
+			break;
+		case column_type_::integer_:
+			_type = "INTEGER";
+			break;
+		case column_type_::text_:
+		default:
+			break;
+		}
+		return _type;
+	}
+
+	std::string constraint_to_string(constraint_ constraint) {
+
+		std::string _constraint;
+		switch (constraint)
+		{
+		case constraint_::not_null:
+			_constraint = "NOT NULL";
+			break;
+		default:
+			_constraint = "NULL";
+			break;
+		}
+		return _constraint;
+	}
+
+};
+
+bool hlib::hbase::connect(const database_file_& file,
+	tables_& tables,
+	std::string& error) {
+
+	if (d_.connected_) return true;
+
+	int error_code = 0;
+	if (file.password.empty()) {
+		error_code = sqlite3_open_v2(file.name.c_str(), &d_.db_,
+			SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, NULL);
+		error_code = sqlite3_exec(d_.db_, "SELECT count(*) FROM sqlite_master;", NULL, NULL, NULL);
+	}
+	else {
+		error_code = sqlite3_open_v2(file.name.c_str(), &d_.db_,
+			SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX, NULL);
+
+		sqlite3_stmt* stm = nullptr;
+		const char* pzTail = nullptr;
+
+		// key the database
+		auto password_ = picosha2::hash256_hex_string(file.password);
+		auto pragma_string = "PRAGMA key = '" + password_ + "';";
+		sqlite3_prepare(d_.db_, pragma_string.c_str(), -1, &stm, &pzTail);
+		sqlite3_step(stm);
+		sqlite3_finalize(stm);
+
+		// test if key is correct
+		error_code = sqlite3_exec(d_.db_, "SELECT count(*) FROM sqlite_master;", NULL, NULL, NULL);
+	}
+
+	if (error_code != SQLITE_OK) {
+		// an error occured
+		error = d_.sqlite_error(error_code);
+
+		// close database
+		sqlite3_close(d_.db_);
+		d_.db_ = nullptr;
+		return false;
+	}
+
+	// create tables
+	table table;
+	std::string sql = "CREATE TABLE ";
+	for (const auto& _table : tables.get()) {
+		sql += _table.name + "(";
+		for (const auto& col : _table.columns) {
+			sql += col.name + " " + d_.type_to_string(col.type) + " " + d_.constraint_to_string(col.constraint) + ",";
+		}
+		sql += "PRIMARY KEY (" + _table.primary_key + "));";
+	}
+
+	if (!d_.sqlite_query(sql, table, error)) {
+		if (error.find("already exists") == std::string::npos) return false;
+	}
+
+	return true;
+}
+
+bool hlib::hbase::insert(rows_& rows, 
+	const std::string& table_name,
+	std::string& error) {
+
+	std::string sql = "INSERT INTO " + table_name + "(";
+	for (const auto& row : rows.get()) {
+		for (const auto& field_name : row.field_names) {
+			sql += field_name;
+			for (size_t indx = 1; indx < row.field_names.size() - 1; indx++)
+				sql += ",";
+		}
+			
+	}
+
+	sql += ") VALUES (";
+	for (const auto& row : rows.get()) {
+		for (const auto& field_data : row.field_data) {
+			sql += field_data;
+			for (size_t indx = 1; indx < row.field_data.size() - 1; indx++)
+				sql += ",";
+		}
+	}
+
+	sql += ");";
+	table table;
+	if (!d_.sqlite_query(sql, table, error)) {
+		if (error.find("already exists") == std::string::npos) return false;
+	}
+
+	return true;
+}
+
+hlib::hbase::hbase() :
+	d_(*new hbase_impl()) {}
+
+hlib::hbase::~hbase() {
+	delete& d_;
+}

@@ -1,6 +1,0 @@
-#include "hlib.h"
-#include <iostream>
-
-void func() {
-	std::cout << "hi world" << std::endl;
-}

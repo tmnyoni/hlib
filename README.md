@@ -13,6 +13,7 @@ using Hbase(sqlite3 wrapper)
 --------------------------------------
 Here is the example code.
 
+<p>
 #include <iostream>
 
 #include "hlib.h"
@@ -122,8 +123,7 @@ int main() {
 
 	return 0;
 }
-
-
+</p>
 
 
 

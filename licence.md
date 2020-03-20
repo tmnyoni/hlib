@@ -4,7 +4,7 @@ Copyright (c) 2020 Tawanda M. Nyoni (hkay.tee at outlook dot com)
 
 This file is part of the Hlib library which is released under the Creative Commons Attribution Non-Commercial 2.0 Generic license (CC BY-NC 2.0).
 
-See accompanying file CC-BY-NC-2.0.txt or copy at https://github.com/Hkay-Tee/hlib/blob/master/CC-BY-NC-2.0.txt
+See accompanying file CC-BY-NC-2.0.txt or copy at https://github.com/Hkay-Tee/hlib/blob/master/CC-BY_NC-2.0.txt
 
 Below is a short summary of what this license means.
 Under this license, you are free to:

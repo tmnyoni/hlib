@@ -72,15 +72,27 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <OutDir>.temp\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>.temp\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>$(ProjectName)$(PlatformArchitecture)d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <OutDir>.temp\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>.temp\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>$(ProjectName)$(PlatformArchitecture)d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
+    <OutDir>.temp\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>.temp\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <OutDir>.temp\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>.temp\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>$(ProjectName)$(PlatformArchitecture)</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -101,15 +113,14 @@
       <AdditionalLibraryDirectories>C:\local\libs\sqlcipher\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y "$(ProjectDir)$(IntDir)hlib.dll" "$(ProjectDir)..\lib\hlib\bin\"
-xcopy /y "$(ProjectDir)$(IntDir)hlib.lib" "$(ProjectDir)..\lib\hlib\lib\"
-xcopy /y "$(ProjectDir)hlib.h" "$(ProjectDir)..\lib\hlib\include\"
-xcopy /y "$(ProjectDir)$(IntDir)hlib.dll" "$(ProjectDir)..\dll_testing\Debug"</Command>
+      <Command>xcopy "$(OutDir)$(TargetName).lib"  "$(ProjectDir)output\lib\" /F /R /Y /I
+xcopy "$(OutDir)$(TargetName)$(TargetExt)"  "$(ProjectDir)output\bin\" /F /R /Y /I
+xcopy "$(ProjectDir)$(ProjectName).h" "$(ProjectDir)output\include\hlib\" /F /R /Y /I</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
@@ -117,6 +128,7 @@ xcopy /y "$(ProjectDir)$(IntDir)hlib.dll" "$(ProjectDir)..\dll_testing\Debug"</C
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>C:\local\libs\sqlcipher\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -124,6 +136,11 @@ xcopy /y "$(ProjectDir)$(IntDir)hlib.dll" "$(ProjectDir)..\dll_testing\Debug"</C
       <EnableUAC>false</EnableUAC>
       <AdditionalLibraryDirectories>C:\local\libs\sqlcipher\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy "$(OutDir)$(TargetName).lib"  "$(ProjectDir)output\lib\" /F /R /Y /I
+xcopy "$(OutDir)$(TargetName)$(TargetExt)"  "$(ProjectDir)output\bin\" /F /R /Y /I
+xcopy "$(ProjectDir)$(ProjectName).h" "$(ProjectDir)output\include\hlib\" /F /R /Y /I</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -148,9 +165,9 @@ xcopy /y "$(ProjectDir)$(IntDir)hlib.dll" "$(ProjectDir)..\dll_testing\Debug"</C
       <AdditionalLibraryDirectories>C:\local\libs\sqlcipher\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y "$(ProjectDir)$(IntDir)hlib.dll" "$(ProjectDir)..\lib\hlib\bin\"
-xcopy /y "$(ProjectDir)$(IntDir)hlib.lib" "$(ProjectDir)..\lib\hlib\lib\"
-xcopy /y "$(ProjectDir)hlib.h" "$(ProjectDir)..\lib\hlib\include\"</Command>
+      <Command>xcopy "$(OutDir)$(TargetName).lib"  "$(ProjectDir)output\lib\" /F /R /Y /I
+xcopy "$(OutDir)$(TargetName)$(TargetExt)"  "$(ProjectDir)output\bin\" /F /R /Y /I
+xcopy "$(ProjectDir)$(ProjectName).h" "$(ProjectDir)output\include\hlib\" /F /R /Y /I</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -165,6 +182,7 @@ xcopy /y "$(ProjectDir)hlib.h" "$(ProjectDir)..\lib\hlib\include\"</Command>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>C:\local\libs\sqlcipher\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -175,9 +193,9 @@ xcopy /y "$(ProjectDir)hlib.h" "$(ProjectDir)..\lib\hlib\include\"</Command>
       <AdditionalLibraryDirectories>C:\local\libs\sqlcipher\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y "$(ProjectDir)$(IntDir)hlib.dll" "$(ProjectDir)..\lib\hlib\bin\"
-xcopy /y "$(ProjectDir)$(IntDir)hlib.lib" "$(ProjectDir)..\lib\hlib\lib\"
-xcopy /y "$(ProjectDir)hlib.h" "$(ProjectDir)..\lib\hlib\include\"</Command>
+      <Command>xcopy "$(OutDir)$(TargetName).lib"  "$(ProjectDir)output\lib\" /F /R /Y /I
+xcopy "$(OutDir)$(TargetName)$(TargetExt)"  "$(ProjectDir)output\bin\" /F /R /Y /I
+xcopy "$(ProjectDir)$(ProjectName).h" "$(ProjectDir)output\include\hlib\" /F /R /Y /I</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

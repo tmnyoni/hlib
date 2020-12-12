@@ -1,4 +1,38 @@
+//---------------------------------------------------------- -
+//Copyright(c) 2020. Tawanda M.Nyoni(hkay dot tee at outlook dot com)
+//
+////VERSION !.0.0
+//
+//
+//This file is part of the Hlib library which is released
+//under the Creative Commons Attribution Non - Commercial
+//2.0 Generic license(CC BY - NC 2.0).
+//
+//See accompanying file CC - BY - NC - 2.0.txt
+//
+//Below is a short summary of what this license means.
+//
+//Under this license, you are free to :
+//------------------------------------
+//SHARE : copy and redistribute the material in any medium or format.
+//	ADAPT : remix, transform, and build upon the material.
+//
+//	Under the following terms :
+//--------------------------
+//ATTRIBUTION : You must give appropriate credit, provide a link to the
+//	license, and indicate if changes were made.You may do so in any
+//	reasonable manner, but not in any way that suggests the licensor endorses
+//	you or your use.
+//	NON - COMMERCIAL : You may not use the material for commercial purposes.For
+//	a commercial license contact the copyright holder using the contact
+//	information provided in this file.
+//	NO ADDITIONAL RESTRICTIONS : You may not apply legal terms or technological
+//	measures that legally restrict others from doing anything the license
+//	permits.
+//----------------------------------------------------------------------------------
+
 #include "hlib.h"
+
 #include "sqlite3.h"
 #include "picosha2.h"
 
@@ -44,8 +78,7 @@ public:
 
 	bool sqlite_query(const std::string& query,
 		table& table,
-		std::string& error)
-	{
+		std::string& error) {
 		table.clear();
 
 		if (db_) {
@@ -82,7 +115,6 @@ public:
 					else
 						break;
 				}
-
 				sqlite3_finalize(statement);
 			}
 			else {
@@ -114,6 +146,7 @@ public:
 			break;
 		case column_type_::text_:
 		default:
+			_type = "TEXT";
 			break;
 		}
 		return _type;
@@ -136,11 +169,12 @@ public:
 
 };
 
-bool hlib::hbase::connect(const database_file_& file,
-	tables_& tables,
+bool hlib::hbase::connect(const file_& file,
+	std::vector<table_>& tables,
 	std::string& error) {
 
-	if (d_.connected_) return true;
+	if (d_.connected_) 
+		return true;
 
 	int error_code = 0;
 	if (file.password.empty()) {
@@ -177,88 +211,105 @@ bool hlib::hbase::connect(const database_file_& file,
 
 	// create tables
 	table table;
-	std::string sql = "CREATE TABLE ";
-	for (const auto& _table : tables.get()) {
-		sql += _table.name + "(";
-		for (const auto& col : _table.columns) {
-			sql += col.name + " " + d_.type_to_string(col.type) + " " + d_.constraint_to_string(col.constraint) + ",";
-		}
-		sql += "PRIMARY KEY (" + _table.primary_key + "));";
-	}
+	for (const auto& table_ : tables) {
+		std::string sql = "CREATE TABLE " + table_.name + "(";
 
-	if (!d_.sqlite_query(sql, table, error)) {
-		if (error.find("already exists") == std::string::npos) return false;
+		for (const auto& col : table_.columns) 
+			sql += col.name + " " + d_.type_to_string(col.type) + " " + d_.constraint_to_string(col.constraint) + ",";
+		
+		std::string composite_key;
+		size_t count_keys = 1;
+		for (const auto key : table_.primary_key) {	
+			composite_key += key;
+
+			if (count_keys < table_.primary_key.size()) {
+				composite_key += ',';
+			}
+			count_keys++;
+		}
+
+		sql += "PRIMARY KEY (" + composite_key + "));";
+
+		if (!d_.sqlite_query(sql, table, error)) 
+			if (error.find("already exists") == std::string::npos) 
+				return false;
+		
+		sql.clear();
 	}
 
 	d_.connected_ = true;
 	return true;
 }
 
-bool hlib::hbase::insert_row(row_& row, 
+bool hlib::hbase::insert_row(std::vector<field_>& row,
 	const std::string& table_name,
 	std::string& error) {
 
-
 	if (!d_.connected_) {
-		error = "Not connected to database"; return false;
+		error = "Not connected to database"; 
+		return false;
 	}
 
-	std::string sql = "INSERT INTO " + table_name + "(";
-
 	size_t index = 1;
-	for (const auto& fields : row.fields) {
-		sql += "'" + fields.name + "'";
+	std::string colums;
+	std::string values;
 
-		if (index < row.fields.size()) {
-			sql += ",";
+	for (const auto& field : row) {
+		colums += field.name;
+		values += "'"+ field.value +"'";
+
+		if (index < row.size()) {
+			colums += ",";
+			values += ",";
 		}
-
 		index++;
 	}
 
-	sql += ") VALUES (";
-	index = 1;
-	for (const auto& fields : row.fields) {
-		sql += "'"+ fields.item + "'";
+	std::string sql = "INSERT INTO " + table_name + "(";
+	sql += (colums + ") VALUES (" + values + ");");
 
-		if (index < row.fields.size()) {
-			sql += ",";
-			index++;
-		}
-	}
-
-	sql += ");";
 	table table;
-	if (!d_.sqlite_query(sql, table, error)) {
-		if (error.find("already exists") == std::string::npos) return false;
-	}
-
+	if (!d_.sqlite_query(sql, table, error)) 
+		return false;
+	
 	return true;
 }
 
-bool hlib::hbase::delete_row(field_& field,
+bool hlib::hbase::delete_row(const field_& field,
 	const std::string& table_name,
 	std::string& error) {
 
 	if (!d_.connected_) {
-		error = "Not connected to database"; return false;
+		error = "Not connected to database"; 
+		return false;
 	}
 
 	table table_;
-	const std::string sql = "DELETE FROM " + table_name + " WHERE " + field.name + " = '" + field.item + "';";
-	if (!d_.sqlite_query(sql ,table_, error)) return false;
+	std::string sql = "DELETE FROM " + table_name;
+	sql += " WHERE " + field.name + " = '" + field.value + "';";
+
+	if (!d_.sqlite_query(sql ,table_, error)) 
+		return false;
 
 	return true;
 }
 
-bool hlib::hbase::count_records(field_& field, 
+bool hlib::hbase::count_records(const field_& field, 
 	const std::string& table_name,
 	size_t& records,
 	std::string& error) {
 
+	if (!d_.connected_) {
+		error = "Not connected to database";
+		return false;
+	}
+
 	table table_;
-	const std::string sql = "SELECT COUNT(*) FROM  " + table_name + " WHERE "+ field.name +" = '"+ field.item +"';";
-	if (!d_.sqlite_query(sql, table_, error)) return false;
+	std::string sql = "SELECT COUNT(*) FROM  " + table_name;
+	sql += " WHERE " + field.name + " = '" + field.value + "';";
+
+	if (!d_.sqlite_query(sql, table_, error)) 
+		return false;
 
 	try {
 		if (!table_.empty())
@@ -273,16 +324,21 @@ bool hlib::hbase::count_records(field_& field,
 		error = e.what();
 		return false;
 	}
-	return true;
 }
 
 bool hlib::hbase::count_records(const std::string& table_name,
 	size_t& records,
 	std::string& error) {
 
+	if (!d_.connected_) {
+		error = "Not connected to database";
+		return false;
+	}
+
 	table table_;
 	std::string sql = "SELECT COUNT(*) FROM  '" + table_name + "';";
-	if (!d_.sqlite_query(sql, table_, error)) return false;
+	if (!d_.sqlite_query(sql, table_, error)) 
+		return false;
 
 	try {
 		if (!table_.empty())
@@ -297,103 +353,252 @@ bool hlib::hbase::count_records(const std::string& table_name,
 		error = e.what();
 		return false;
 	}
-
-	return true;
 }
 
-bool hlib::hbase::get_records(std::vector<row_>& rows,
-	const field_& field,
+bool hlib::hbase::get_records(table& records,
+	const std::vector<field_>& compound_keys,
 	const std::string& table_name,
-	std::string& error){
+	std::string& error) {
 
-	if (!d_.connected_) { error = "Not connected to database"; return false; }
+	if (!d_.connected_) { 
+		error = "Not connected to database"; 
+		return false; 
+	}
+
+	std::string keys;
+	int indx = 1;
+	for (auto key : compound_keys) {
+		keys += key.name + " = '" + key.value +"'";
+		if (indx < compound_keys.size())
+			keys += " AND ";
+		indx++;
+	}
 
 	table table_;
-	const std::string sql = "SELECT * FROM " + table_name + " WHERE " + field.name + " = '" + field.item + "';";
-	if (!d_.sqlite_query(sql, table_, error)) return false;
+	std::string sql = "SELECT * FROM " + table_name;
+	sql += " WHERE " + keys + ";";
+
+	if (!d_.sqlite_query(sql, table_, error)) 
+		return false;
 
 	if (!table_.empty()) {
-		for (const auto& _row : table_) {
-			row_ row = {};
-			field_ field = {};
-
-			for (const auto& item : _row) {
-				field.name = item.first;
-				field.item = item.second;
-				row.fields.push_back(field);
-			}
-			rows.push_back(row);
-		}
+		for (const auto& row : table_) 
+			records.push_back(row);
+		return true;
 	}
 	else {
 		error = "the table is empty!";
 		return false;
 	}
-
-	return true;
 }
 
-bool hlib::hbase::get_records(std::vector<row_>& rows,
+
+bool hlib::hbase::get_records(table& records,
 	const std::string& table_name,
 	std::string& error) {
 
-	if (!d_.connected_) { error = "Not connected to database"; return false; }
+	if (!d_.connected_) {
+		error = "Not connected to database";
+		return false;
+	}
 
 	table table_;
 	const std::string sql = "SELECT * FROM '" + table_name + "';";
-	if (!d_.sqlite_query(sql, table_, error)) return false;
+	if (!d_.sqlite_query(sql, table_, error))
+		return false;
 
 	if (!table_.empty()) {
-		for (const auto& _row : table_) {
-			row_ row = {};
-			field_ field = {};
-
-			for (const auto& item : _row) {
-				field.name = item.first;
-				field.item = item.second;
-				row.fields.push_back(field);
-			}
-			rows.push_back(row);
-		}
+		for (const auto row : table_)
+			records.push_back(row);
+		return true;
 	}
 	else {
 		error = "the table is empty!";
 		return false;
 	}
-
-	return true;
 }
 
-bool hlib::hbase::update_record(row_& row_to_update,
-	row_& row_update,
+
+bool hlib::hbase::get_records_with_sort_by(table& records,
+	const field_& sort_by_field,
 	const std::string& table_name,
 	std::string& error) {
 
-	if (!d_.connected_) { error = "Not connected to database"; return false; }
+	if (!d_.connected_) {
+		error = "Not connected to database";
+		return false;
+	}
+
+	table table_;
+	std::string sql = "SELECT * FROM " + table_name;
+
+	sql += " ORDER BY '" + sort_by_field.name + "';";
+
+	if (!d_.sqlite_query(sql, table_, error))
+		return false;
+
+	if (!table_.empty()) {
+		for (const auto& row : table_)
+			records.push_back(row);
+		return true;
+	}
+	else {
+		error = "the table is empty!";
+		return false;
+	}
+}
+
+bool hlib::hbase::get_records_with_and_sort_by(table& records,
+	const std::vector<field_>& compound_keys,
+	const field_& sort_by_field,
+	const std::string& table_name,
+	std::string& error) {
+
+	if (!d_.connected_) {
+		error = "Not connected to database";
+		return false;
+	}
+
+	std::string keys;
+	int indx = 1;
+	for (auto key : compound_keys) {
+		keys += key.name + " = '" + key.value + "'";
+		if (indx < compound_keys.size())
+			keys += " AND ";
+		indx++;
+	}
+
+	table table_;
+	std::string sql = "SELECT * FROM " + table_name;
+	sql += " WHERE " + keys + " ORDER BY '" + sort_by_field.name + "';";
+
+	if (!d_.sqlite_query(sql, table_, error))
+		return false;
+
+	if (!table_.empty()) {
+		for (const auto& row : table_)
+			records.push_back(row);
+		return true;
+	}
+	else {
+		error = "the table is empty!";
+		return false;
+	}
+}
+
+bool hlib::hbase::get_records_using_custom_query(table& records,
+	const std::string& custom_query_statement,
+	std::string& error) {
+
+	if (!d_.connected_) {
+		error = "Not connected to database";
+		return false;
+	}
+
+	table table_;
+	if (!d_.sqlite_query(custom_query_statement, table_, error))
+		return false;
+
+	if (!table_.empty()) {
+		for (const auto& row : table_)
+			records.push_back(row);
+		return true;
+	}
+	else {
+		error = "the table is empty!";
+		return false;
+	}
+}
+
+bool hlib::hbase::get_records_with_or_sort_by(table& records,
+	const std::vector<field_>& compound_keys,
+	const field_& sort_by_field,
+	const std::string& table_name,
+	std::string& error) {
+
+	if (!d_.connected_) {
+		error = "Not connected to database";
+		return false;
+	}
+
+	std::string keys;
+	int indx = 1;
+	for (auto key : compound_keys) {
+		keys +=  key.name + " = '" + key.value + "'";
+		if (indx < compound_keys.size())
+			keys += " OR ";
+		indx++;
+	}
+
+	table table_;
+	std::string sql = "SELECT * FROM " + table_name;
+	sql += " WHERE " + keys + " ORDER BY '" + sort_by_field.name + "';";
+
+	if (!d_.sqlite_query(sql, table_, error))
+		return false;
+
+	if (!table_.empty()) {
+		for (const auto& row : table_)
+			records.push_back(row);
+		return true;
+	}
+	else {
+		error = "the table is empty!";
+		return false;
+	}
+}
+
+
+
+bool hlib::hbase::custom_query(const std::string& custom_query_, std::string& error) {
+
+	if (!d_.connected_) {
+		error = "Not connected to database";
+		return false;
+	}
+
+	table table_;
+	if (!d_.sqlite_query(custom_query_, table_, error))
+		return false;
+
+	if (!table_.empty()) 
+		return true;
+	else {
+		error = "the table is empty!";
+		return false;
+	}
+}
+
+bool hlib::hbase::update_record(const field_ field,
+	std::vector<field_>& row_update,
+	const std::string& table_name,
+	std::string& error) {
+
+	if (!d_.connected_) { 
+		error = "Not connected to database"; 
+		return false; 
+	}
+
+	size_t index = 1;
+	std::string fields;
+	for (auto field_ : row_update) {
+		fields += field_.name + " = '" + field_.value + "'";
+
+		if (index < row_update.size())
+			fields += ",";
+		index++;
+	}
 
 	table table_;
 	std::string sql = "UPDATE " + table_name + " SET ";
-
-	size_t index = 1;
-	for (auto field_to_update : row_to_update.fields) {
-		for (auto field_update : row_update.fields) {
-
-			if (field_to_update.name == field_update.name) {
-				sql += field_to_update.name+ " = '" +field_update.item+ "'";
-
-				if (index < row_update.fields.size()) {
-					sql += ",";
-					index++;
-				}
-			}
-		}
-	}
-
-	sql += ";";
-	if (!d_.sqlite_query(sql, table_, error)) return false;
+	sql += fields + " WHERE " + field.name + " = '" + field.value +"';";
+;
+	if (!d_.sqlite_query(sql, table_, error)) 
+		return false;
 
 	return true;
 }
+
 hlib::hbase::hbase() :
 	d_(*new hbase_impl()) {}
 

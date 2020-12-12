@@ -1,11 +1,2 @@
 # hlib
-Collection of C++ libraries(Still under-development)
-About the Library.
----------------------------------------
-<p>
-  Hlib is designed for easy integration to,  efficient and easy to maintain modern C++ applications.
-  So far only Sqlite3 wrapper is available(HBase).
-</p>
-
-
-
+A collection of C++ libraries written in modern C++(still under development) 
